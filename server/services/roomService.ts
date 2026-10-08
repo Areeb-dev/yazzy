@@ -88,7 +88,6 @@ export class RoomService {
     this.now = o.now ?? Date.now;
   }
 
-  // ---------------------------------------------------------------- rooms
 
   createRoom(socketId: string, rawName: unknown): void {
     this.leaveRoom(socketId);
