@@ -1098,13 +1098,14 @@ button {
   width: var(--s);
   height: var(--s);
   perspective: calc(var(--s) * 7);
+  contain: layout style paint;
 }
 .cube {
   position: relative;
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
-  will-change: transform;
+  contain: layout style;
 }
 .face {
   position: absolute;

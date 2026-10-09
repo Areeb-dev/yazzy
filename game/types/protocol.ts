@@ -64,7 +64,8 @@ export interface ClientToServerEvents {
   leave_room: () => void;
   restart_game: () => void;
   decline_restart: () => void;
-  roll_dice: () => void;
+  /** Optional `held` is applied immediately before rolling (same turn) so holds are not lost to network ordering. */
+  roll_dice: (p?: { held?: boolean[] }) => void;
   hold_dice: (p: { held: boolean[] }) => void;
   select_score: (p: { category: Category }) => void;
 }

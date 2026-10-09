@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type CSSProperties } from 'react';
+import { memo, useLayoutEffect, useRef, type CSSProperties } from 'react';
 
 export const PIPS: Record<number, number[]> = {
   1: [4],
@@ -51,7 +51,7 @@ interface CubeProps {
  * A CSS 3D die. Size comes from the `--s` custom property of the nearest `.cube-wrap`.
  * The tumble is purely visual: it always lands on the value it was given.
  */
-export function Cube({ value, spinKey = 0, style }: CubeProps) {
+function CubeInner({ value, spinKey = 0, style }: CubeProps) {
   const ref = useRef<HTMLDivElement>(null);
   const seen = useRef(spinKey);
   const [rx, ry] = orientOf(value);
@@ -92,3 +92,5 @@ export function Cube({ value, spinKey = 0, style }: CubeProps) {
     </div>
   );
 }
+
+export const Cube = memo(CubeInner, (a, b) => a.value === b.value && a.spinKey === b.spinKey);

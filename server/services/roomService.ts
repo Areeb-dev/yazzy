@@ -257,8 +257,8 @@ export class RoomService {
 
   // ---------------------------------------------------------------- game actions (player-initiated)
 
-  rollDice(socketId: string): void {
-    this.performRoll(...this.activeContext(socketId));
+  rollDice(socketId: string, held?: unknown): void {
+    this.performRoll(...this.activeContext(socketId), held);
   }
 
   holdDice(socketId: string, held: unknown): void {
@@ -386,9 +386,16 @@ export class RoomService {
 
   // Shared by humans and the bot, so both obey exactly the same engine rules.
 
-  private performRoll(room: Room, playerId: string): void {
-    const { state, rolledIndices } = engine.rollDice(room.gameState!, playerId, this.roller);
-    this.applyState(room, state);
+  private performRoll(room: Room, playerId: string, held?: unknown): void {
+    let state = room.gameState!;
+    if (held !== undefined) {
+      const gp = engine.getPlayer(state, playerId);
+      if (gp && gp.rollsRemaining > 0 && gp.rollsRemaining < MAX_ROLLS) {
+        state = engine.setHeld(state, playerId, held);
+      }
+    }
+    const { state: next, rolledIndices } = engine.rollDice(state, playerId, this.roller);
+    this.applyState(room, next);
     this.out.toRoom(room.roomCode, 'dice_rolled', { room: toRoomView(room), playerId, rolledIndices });
   }
 
