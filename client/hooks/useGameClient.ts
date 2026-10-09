@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Category } from '@game/types';
-import type { RoomView, Session } from '@game/types/protocol';
+import type { ReactionEventPayload, RoomView, Session } from '@game/types/protocol';
+import type { ReactionKind } from '@game/types/reactions';
+import { playReactionStart } from '../services/reactionSounds';
 import { loadSession, saveSession, socket } from '../services/socket';
 import type { LastMove, LastRoll } from '../types';
 
@@ -14,9 +16,11 @@ export function useGameClient() {
   const [error, setError] = useState<string | null>(null);
   const [lastMove, setLastMove] = useState<LastMove | null>(null);
   const [lastRoll, setLastRoll] = useState<LastRoll | null>(null);
+  const [activeReactions, setActiveReactions] = useState<ReactionEventPayload[]>([]);
   const counter = useRef(0);
   const rejoining = useRef(false);
   const roomRef = useRef<RoomView | null>(null);
+  const seenReactionIds = useRef(new Set<string>());
 
   useEffect(() => {
     const show = (r: RoomView | null) => {
@@ -35,6 +39,8 @@ export function useGameClient() {
       setSession(null);
       setLastMove(null);
       setLastRoll(null);
+      setActiveReactions([]);
+      seenReactionIds.current.clear();
       saveSession(null);
     };
 
@@ -82,7 +88,14 @@ export function useGameClient() {
     });
     socket.on('turn_changed', ({ room: r }) => show(r));
     socket.on('game_finished', ({ room: r }) => show(r));
+    socket.on('reaction_played', (p) => {
+      if (seenReactionIds.current.has(p.eventId)) return;
+      seenReactionIds.current.add(p.eventId);
+      playReactionStart(p.kind);
+      setActiveReactions((prev) => [...prev, p]);
+    });
     socket.on('room_error', ({ code, message }) => {
+      if (code === 'REACTION_COOLDOWN') return;
       if (SESSION_LOST.has(code) && (rejoining.current || code === 'ROOM_EXPIRED')) {
         rejoining.current = false;
         drop();
@@ -110,10 +123,15 @@ export function useGameClient() {
     roll: () => socket.emit('roll_dice'),
     hold: (held: boolean[]) => socket.emit('hold_dice', { held }),
     score: (category: Category) => socket.emit('select_score', { category }),
+    sendReaction: (reactionId: string, kind: ReactionKind) => socket.emit('send_reaction', { reactionId, kind }),
   };
 
+  const dismissReaction = useCallback((eventId: string) => {
+    setActiveReactions((prev) => prev.filter((e) => e.eventId !== eventId));
+  }, []);
+
   const me = room && session ? (room.players.find((p) => p.id === session.playerId) ?? null) : null;
-  return { room, session, me, connected, error, clearError, lastMove, lastRoll, actions };
+  return { room, session, me, connected, error, clearError, lastMove, lastRoll, activeReactions, dismissReaction, actions };
 }
 
 export type GameClient = ReturnType<typeof useGameClient>;

@@ -520,6 +520,31 @@ describe('restart', () => {
   });
 });
 
+describe('reactions', () => {
+  it('broadcasts a cosmetic reaction to the room without changing game state', () => {
+    const { service, last, roomCode, host, guest } = startedOnlineGame();
+    const before = service.getRoom(roomCode)!;
+    service.sendReaction('s1', 'laugh', 'emoji');
+    const evt = last('reaction_played')!;
+    expect(evt.to).toBe(roomCode);
+    expect(evt.payload.fromPlayerId).toBe(host.id);
+    expect(evt.payload.toPlayerId).toBe(guest.id);
+    expect(evt.payload.reactionId).toBe('laugh');
+    expect(evt.payload.kind).toBe('emoji');
+    expect(evt.payload.eventId).toBeTruthy();
+    const after = service.getRoom(roomCode)!;
+    expect(after.gameState).toEqual(before.gameState);
+    expect(after.currentPlayerId).toBe(before.currentPlayerId);
+  });
+
+  it('rate-limits reaction spam', () => {
+    const { service, clock } = startedOnlineGame();
+    service.sendReaction('s1', 'fire', 'emoji');
+    clock.now += 100;
+    expect(errorCode(() => service.sendReaction('s1', 'clap', 'emoji'))).toBe('REACTION_COOLDOWN');
+  });
+});
+
 describe('error mapping', () => {
   it('maps known errors and hides unknown ones', () => {
     expect(toErrorPayload(new RoomError('ROOM_FULL', 'x'))).toEqual({ code: 'ROOM_FULL', message: 'x' });

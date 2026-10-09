@@ -2,6 +2,7 @@ import { chooseCategory, decideHold } from '../../game/bot';
 import * as engine from '../../game/engine';
 import { GameError } from '../../game/engine';
 import { MAX_ROLLS, type DieRoller, type GameState } from '../../game/types';
+import { findReaction } from '../../game/types/reactions';
 import type {
   ErrorCode,
   PlayerColor,
@@ -79,6 +80,8 @@ export class RoomService {
   private readonly now: () => number;
   private readonly sockets = new Map<string, { roomCode: string; playerId: string }>();
   private readonly botTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly reactionLastAt = new Map<string, number>();
+  private readonly reactionRecent = new Map<string, number[]>();
 
   constructor(o: RoomServiceOptions) {
     this.store = o.store;
@@ -269,6 +272,37 @@ export class RoomService {
     this.performScore(...this.activeContext(socketId), category);
   }
 
+  /** Cosmetic reaction — does not affect game state. Rate-limited per player. */
+  sendReaction(socketId: string, reactionId: unknown, kind: unknown): void {
+    const [room, playerId] = this.roomContext(socketId);
+    const def = findReaction(reactionId, kind);
+    if (!def) throw new RoomError('INTERNAL', 'Unknown reaction.');
+
+    const opponent = room.players.find((p) => p.id !== playerId);
+    if (!opponent) throw new RoomError('INTERNAL', 'No opponent to react to.');
+
+    const now = this.now();
+    const last = this.reactionLastAt.get(playerId) ?? 0;
+    if (now - last < 900) {
+      throw new RoomError('REACTION_COOLDOWN', 'Wait a moment before sending another reaction.');
+    }
+    const window = (this.reactionRecent.get(playerId) ?? []).filter((t) => now - t < 60_000);
+    if (window.length >= 15) {
+      throw new RoomError('REACTION_COOLDOWN', 'Too many reactions. Take a short break.');
+    }
+    window.push(now);
+    this.reactionRecent.set(playerId, window);
+    this.reactionLastAt.set(playerId, now);
+
+    this.out.toRoom(room.roomCode, 'reaction_played', {
+      eventId: newId(),
+      fromPlayerId: playerId,
+      toPlayerId: opponent.id,
+      reactionId: def.id,
+      kind: def.kind,
+    });
+  }
+
   // ---------------------------------------------------------------- housekeeping
 
   /** Removes expired rooms. Call periodically. Returns how many were removed. */
@@ -376,12 +410,19 @@ export class RoomService {
     return now - room.lastActivityAt > c.idleRoomTtlMs;
   }
 
-  private activeContext(socketId: string): [Room, string] {
+  private roomContext(socketId: string): [Room, string] {
     const entry = this.sockets.get(socketId);
     const room = entry ? this.store.get(entry.roomCode) : undefined;
     if (!entry || !room) throw new RoomError('NOT_IN_ROOM', 'You are not in a room.');
-    if (room.status !== 'playing' || !room.gameState) throw new RoomError('GAME_NOT_ACTIVE', 'The game has not started.');
+    if (room.players.length < 2) throw new RoomError('GAME_NOT_ACTIVE', 'Reactions need an opponent.');
+    if (room.status === 'waiting') throw new RoomError('GAME_NOT_ACTIVE', 'The game has not started.');
     return [room, entry.playerId];
+  }
+
+  private activeContext(socketId: string): [Room, string] {
+    const [room, playerId] = this.roomContext(socketId);
+    if (room.status !== 'playing' || !room.gameState) throw new RoomError('GAME_NOT_ACTIVE', 'The game has not started.');
+    return [room, playerId];
   }
 
   // Shared by humans and the bot, so both obey exactly the same engine rules.

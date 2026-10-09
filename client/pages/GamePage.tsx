@@ -4,7 +4,9 @@ import { calculateTotal, scoreCategory } from '@game/scoring';
 import type { PublicPlayer } from '@game/types/protocol';
 import { ActionDialog, ResultModal } from '../components/Dialogs';
 import { DiceTray } from '../components/DiceTray';
-import { RestartButton, ScoreBadge, TurnPills } from '../components/EdgeWidgets';
+import { GameAvatarsBar } from '../components/GameAvatarsBar';
+import { ReactionEffectsLayer } from '../components/ReactionEffectsLayer';
+import { ReactionPicker } from '../components/ReactionPicker';
 import { FLIGHT_MS, FlyingDice } from '../components/FlyingDice';
 import { RollBar } from '../components/RollBar';
 import { RuleTip, type TipTarget } from '../components/RuleTip';
@@ -15,12 +17,13 @@ import type { LastMove } from '../types';
 const POP_MS = 800;
 
 export function GamePage({ client }: { client: GameClient }) {
-  const { room, me, lastMove, lastRoll, actions } = client;
+  const { room, session, me, lastMove, lastRoll, activeReactions, dismissReaction, actions } = client;
   const [selected, setSelected] = useState<Category | null>(null);
   const [flight, setFlight] = useState<LastMove | null>(null);
   const [pop, setPop] = useState<{ key: string; id: number; upper: boolean } | null>(null);
   const [menu, setMenu] = useState(false);
   const [tip, setTip] = useState<{ target: TipTarget; rect: DOMRect } | null>(null);
+  const [reactionsOpen, setReactionsOpen] = useState(false);
 
   // New score from the server: fly the dice to the box, then reveal the number.
   useEffect(() => {
@@ -150,15 +153,22 @@ export function GamePage({ client }: { client: GameClient }) {
   return (
     <>
       <div className="frame page-game">
-        <TurnPills
+        <GameAvatarsBar
           meName={me.name}
           oppName={opponent.name}
+          meScore={calculateTotal(meScores)}
+          oppScore={calculateTotal(oppScores)}
           meActive={playing && currentId === me.id}
           oppActive={playing && currentId === opponent.id}
+          meConnected={me.connected}
+          oppConnected={opponent.connected}
+          oppIsBot={opponent.isBot}
           status={status}
+          waitingRestart={waitingForRestart}
           onBack={() => setMenu(true)}
+          onSettings={() => setMenu(true)}
+          onMeAvatarClick={() => setReactionsOpen(true)}
         />
-        <RestartButton onClick={() => setMenu(true)} waiting={waitingForRestart} />
         <Scorecard
           me={me}
           opponent={opponent}
@@ -196,9 +206,16 @@ export function GamePage({ client }: { client: GameClient }) {
         />
       </div>
 
-      <ScoreBadge opponent={calculateTotal(oppScores)} me={calculateTotal(meScores)} />
-
       {flight && <FlyingDice key={flight.id} move={flight} />}
+      <ReactionPicker
+        meName={me.name}
+        open={reactionsOpen}
+        onClose={() => setReactionsOpen(false)}
+        onPick={(reactionId, kind) => actions.sendReaction(reactionId, kind)}
+      />
+      {session && (
+        <ReactionEffectsLayer events={activeReactions} meId={session.playerId} onDone={dismissReaction} />
+      )}
       {tip && <RuleTip target={tip.target} rect={tip.rect} onClose={() => setTip(null)} />}
 
       {room.status === 'finished' && !busy && (

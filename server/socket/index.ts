@@ -41,6 +41,7 @@ export function registerSocketHandlers(io: GameServer, service: RoomService): vo
     socket.on('roll_dice', handle(() => service.rollDice(socket.id)));
     socket.on('hold_dice', handle((p) => service.holdDice(socket.id, field(p, 'held'))));
     socket.on('select_score', handle((p) => service.selectScore(socket.id, field(p, 'category'))));
+    socket.on('send_reaction', handle((p) => service.sendReaction(socket.id, field(p, 'reactionId'), field(p, 'kind'))));
     socket.on('disconnect', () => service.handleDisconnect(socket.id));
   });
 }

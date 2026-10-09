@@ -1,4 +1,5 @@
 import type { Category, EndReason, GameErrorCode, Scores } from './index';
+import type { ReactionKind } from './reactions';
 
 export type RoomStatus = 'waiting' | 'playing' | 'finished';
 export type RoomMode = 'solo' | 'online';
@@ -14,7 +15,16 @@ export type RoomErrorCode =
   | 'NOT_IN_ROOM'
   | 'GAME_NOT_ACTIVE'
   | 'INVALID_SESSION'
+  | 'REACTION_COOLDOWN'
   | 'INTERNAL';
+
+export interface ReactionEventPayload {
+  eventId: string;
+  fromPlayerId: string;
+  toPlayerId: string;
+  reactionId: string;
+  kind: ReactionKind;
+}
 
 export type ErrorCode = RoomErrorCode | GameErrorCode;
 
@@ -67,6 +77,7 @@ export interface ClientToServerEvents {
   roll_dice: () => void;
   hold_dice: (p: { held: boolean[] }) => void;
   select_score: (p: { category: Category }) => void;
+  send_reaction: (p: { reactionId: string; kind: ReactionKind }) => void;
 }
 
 export interface ServerToClientEvents {
@@ -92,4 +103,5 @@ export interface ServerToClientEvents {
   }) => void;
   turn_changed: (p: { room: RoomView; currentPlayerId: string }) => void;
   game_finished: (p: { room: RoomView; winnerIds: string[] }) => void;
+  reaction_played: (p: ReactionEventPayload) => void;
 }
