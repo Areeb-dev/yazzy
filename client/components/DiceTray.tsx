@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Cube, prefersReducedMotion } from './Cube';
 import type { LastRoll } from '../types';
 
@@ -31,19 +31,19 @@ function Sparkle() {
 
 const SLOT_UNITS = 65.7;
 
-function DiceTrayInner({ dice, held, interactive, lastRoll, animateRolls, flyingHeld, onToggle }: Props) {
+export function DiceTray({ dice, held, interactive, lastRoll, animateRolls, flyingHeld, onToggle }: Props) {
   const slots = useRef<(HTMLButtonElement | null)[]>([]);
   const flying = flyingHeld !== null;
-  const [spinKeys, setSpinKeys] = useState([0, 0, 0, 0, 0]);
-  const spinNonce = useRef(0);
 
-  useEffect(() => {
-    if (!lastRoll || lastRoll.nonce === spinNonce.current) return;
-    spinNonce.current = lastRoll.nonce;
-    setSpinKeys((keys) =>
-      keys.map((k, i) => (animateRolls && lastRoll.indices.includes(i) ? lastRoll.nonce : k)),
-    );
-  }, [lastRoll, animateRolls]);
+  // Each die keeps its own spin counter, and only dice that were actually rolled get a new one.
+  // (Held dice must stay perfectly still, so their counter must not change on a re-roll.)
+  const spin = useRef({ nonce: 0, keys: [0, 0, 0, 0, 0] });
+  if (lastRoll && lastRoll.nonce !== spin.current.nonce) {
+    spin.current = {
+      nonce: lastRoll.nonce,
+      keys: spin.current.keys.map((k, i) => (animateRolls && lastRoll.indices.includes(i) ? lastRoll.nonce : k)),
+    };
+  }
 
   // Dice that were just rolled hop out of their slot while they tumble.
   useEffect(() => {
@@ -75,7 +75,7 @@ function DiceTrayInner({ dice, held, interactive, lastRoll, animateRolls, flying
       {Array.from({ length: 5 }, (_, i) => {
         const value = flying ? 0 : (dice[i] ?? 0);
         const isHeld = flying ? !!flyingHeld?.[i] : !!held[i];
-        const spinKey = spinKeys[i];
+        const spinKey = spin.current.keys[i];
         return (
           <button
             key={i}
@@ -105,5 +105,3 @@ function DiceTrayInner({ dice, held, interactive, lastRoll, animateRolls, flying
     </div>
   );
 }
-
-export const DiceTray = memo(DiceTrayInner);

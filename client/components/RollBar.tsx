@@ -3,7 +3,6 @@ import { MAX_ROLLS } from '@game/types';
 interface Props {
   rollsRemaining: number;
   canRoll: boolean;
-  rollPending?: boolean;
   /** PLAY slides in after the first roll. */
   showPlay: boolean;
   canPlay: boolean;
@@ -11,7 +10,7 @@ interface Props {
   onPlay: () => void;
 }
 
-export function RollBar({ rollsRemaining, canRoll, rollPending = false, showPlay, canPlay, onRoll, onPlay }: Props) {
+export function RollBar({ rollsRemaining, canRoll, showPlay, canPlay, onRoll, onPlay }: Props) {
   const used = MAX_ROLLS - rollsRemaining;
   return (
     <div className="rollbar">
@@ -19,7 +18,7 @@ export function RollBar({ rollsRemaining, canRoll, rollPending = false, showPlay
         <button
           type="button"
           className="btn-soft primary-blue roll"
-          disabled={!canRoll || rollPending}
+          disabled={!canRoll}
           onClick={onRoll}
           aria-label={`Roll dice, ${rollsRemaining} of ${MAX_ROLLS} rolls left`}
         >

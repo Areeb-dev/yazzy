@@ -1,4 +1,3 @@
-import { memo } from 'react';
 import {
   CATEGORY_LABELS,
   LOWER_CATEGORIES,
@@ -31,7 +30,7 @@ interface Props {
   onInfo: (id: TipTarget, rect: DOMRect) => void;
 }
 
-function ScorecardInner({ me, opponent, meScores, oppScores, selectable, selected, preview, pop, sparkId, onPick, onInfo }: Props) {
+export function Scorecard({ me, opponent, meScores, oppScores, selectable, selected, preview, pop, sparkId, onPick, onInfo }: Props) {
   const mineCell = (cat: Category) => {
     const key = `${me.id}:${cat}`;
     const value = meScores[cat];
@@ -134,5 +133,3 @@ function ScorecardInner({ me, opponent, meScores, oppScores, selectable, selecte
     </section>
   );
 }
-
-export const Scorecard = memo(ScorecardInner);

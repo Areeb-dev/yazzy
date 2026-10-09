@@ -187,18 +187,6 @@ describe('authoritative actions', () => {
     expect([second[0], second[1], second[4]]).toEqual([first[0], first[1], first[4]]);
   });
 
-  it('applies hold mask sent with roll before re-rolling (atomic hold+roll)', () => {
-    const { service, last } = startedOnlineGame();
-    service.rollDice('s1');
-    const first = last('dice_rolled')!.payload.room.players[0].dice as number[];
-    service.rollDice('s1', [true, false, true, false, false]);
-    const view = last('dice_rolled')!.payload.room;
-    expect(view.players[0].heldDice).toEqual([true, false, true, false, false]);
-    const second = view.players[0].dice as number[];
-    expect(second[0]).toBe(first[0]);
-    expect(second[2]).toBe(first[2]);
-  });
-
   it('rejects malformed holds, unknown and duplicate categories', () => {
     const { service } = startedOnlineGame();
     expect(errorCode(() => service.holdDice('s1', [true]))).toBe('MUST_ROLL_FIRST');

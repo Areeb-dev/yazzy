@@ -15,7 +15,7 @@ import type { LastMove } from '../types';
 const POP_MS = 800;
 
 export function GamePage({ client }: { client: GameClient }) {
-  const { room, me, lastMove, lastRoll, rollPending, actions } = client;
+  const { room, me, lastMove, lastRoll, actions } = client;
   const [selected, setSelected] = useState<Category | null>(null);
   const [flight, setFlight] = useState<LastMove | null>(null);
   const [pop, setPop] = useState<{ key: string; id: number; upper: boolean } | null>(null);
@@ -65,7 +65,7 @@ export function GamePage({ client }: { client: GameClient }) {
   const myTurn = playing && currentId === me.id && !busy;
   const rolled = me.dice.every((d) => d > 0);
   const allHeld = me.heldDice.every(Boolean);
-  const canRoll = myTurn && !rollPending && me.rollsRemaining > 0 && !(rolled && allHeld);
+  const canRoll = myTurn && me.rollsRemaining > 0 && !(rolled && allHeld);
   const canPick = myTurn && rolled;
   const canPlay = canPick && selected !== null;
 
@@ -99,6 +99,12 @@ export function GamePage({ client }: { client: GameClient }) {
     if (!active.connected) return `${active.name} lost connection. Waiting…`;
     return active.isBot ? 'Bot is playing…' : `${active.name} is playing…`;
   })();
+
+  const toggleHold = (i: number) => {
+    const next = [...me.heldDice];
+    next[i] = !next[i];
+    actions.hold(next);
+  };
 
   const leave = () => {
     setMenu(false);
@@ -173,12 +179,11 @@ export function GamePage({ client }: { client: GameClient }) {
           lastRoll={lastRoll}
           animateRolls={animateRolls}
           flyingHeld={flight ? flight.heldDice : null}
-          onToggle={actions.toggleHold}
+          onToggle={toggleHold}
         />
         <RollBar
           rollsRemaining={me.rollsRemaining}
           canRoll={canRoll}
-          rollPending={rollPending}
           showPlay={myTurn && rolled}
           canPlay={canPlay}
           onRoll={actions.roll}

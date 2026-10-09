@@ -38,7 +38,7 @@ export function registerSocketHandlers(io: GameServer, service: RoomService): vo
     socket.on('leave_room', handle(() => service.leaveRoom(socket.id)));
     socket.on('restart_game', handle(() => service.restartGame(socket.id)));
     socket.on('decline_restart', handle(() => service.declineRestart(socket.id)));
-    socket.on('roll_dice', handle((p) => service.rollDice(socket.id, field(p, 'held'))));
+    socket.on('roll_dice', handle(() => service.rollDice(socket.id)));
     socket.on('hold_dice', handle((p) => service.holdDice(socket.id, field(p, 'held'))));
     socket.on('select_score', handle((p) => service.selectScore(socket.id, field(p, 'category'))));
     socket.on('disconnect', () => service.handleDisconnect(socket.id));
